@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed - Social Media App</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar container">
+            <a href="/views/feed.html" class="logo">SocialApp</a>
+            
+            <div class="nav-links">
+                <a href="/views/feed.html"><i class="fas fa-home"></i> Home</a>
+                <a href="#" onclick="window.location.href='/views/profile.html?id=' + window.authModule.getUser()?.id">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+                <div class="search-box">
+                    <input type="text" id="search-users" placeholder="Search users...">
+                    <div id="search-results" class="search-results"></div>
+                </div>
+                <a href="#" onclick="window.authModule.logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+                <img src="" alt="Profile" class="profile-pic nav-profile-pic">
+                <span class="nav-username"></span>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="feed-container">
+            <!-- Left Sidebar -->
+            <aside class="sidebar-left">
+                <div class="user-card">
+                    <img src="" alt="Profile" class="profile-pic" id="sidebar-profile-pic">
+                    <h3 id="sidebar-username"></h3>
+                    <div class="user-stats">
+                        <div class="stat">
+                            <strong id="followers-count">0</strong>
+                            <span>Followers</span>
+                        </div>
+                        <div class="stat">
+                            <strong id="following-count">0</strong>
+                            <span>Following</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-block" onclick="window.location.href='/views/profile.html?id=' + window.authModule.getUser()?.id">
+                        View Profile
+                    </button>
+                </div>
+                
+                <div class="trending-topics">
+                    <h4>Trending Topics</h4>
+                    <ul>
+                        <li>#SocialMedia</li>
+                        <li>#TechNews</li>
+                        <li>#WebDevelopment</li>
+                        <li>#Programming</li>
+                        <li>#JavaScript</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Main Feed -->
+            <section class="main-feed">
+                <div class="create-post-card">
+                    <form id="create-post-form" onsubmit="createPost(event)">
+                        <div class="form-group">
+                            <textarea id="post-content" class="form-control" 
+                                      placeholder="What's on your mind?" 
+                                      rows="3" maxlength="2000"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <div class="file-upload">
+                                <input type="file" id="post-image" name="image" accept="image/*" onchange="previewImage(this)">
+                                <button type="button" class="btn">
+                                    <i class="fas fa-image"></i> Add Image
+                                </button>
+                            </div>
+                            <div id="image-preview"></div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-block">Post</button>
+                    </form>
+                </div>
+                
+                <div class="feed-tabs">
+                    <button class="tab-btn active" onclick="switchTab('all')">All Posts</button>
+                    <button class="tab-btn" onclick="switchTab('following')">Following</button>
+                </div>
+                
+                <div id="feed-posts">
+                    <!-- Posts will be loaded here -->
+                </div>
+                
+                <div id="following-posts" style="display: none;">
+                    <!-- Following posts will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Right Sidebar -->
+            <aside class="sidebar-right">
+                <div class="suggested-users">
+                    <h4>Suggested Users</h4>
+                    <div id="suggested-users-list">
+                        <!-- Suggested users will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="app-info">
+                    <h4>About SocialApp</h4>
+                    <p>A simple social media platform for connecting with friends and sharing moments.</p>
+                    <p class="copyright">© 2024 SocialApp. All rights reserved.</p>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script src="js/auth.js"></script>
+    <script src="js/posts.js"></script>
+    <script src="js/profile.js"></script>
+    <script>
+        // Switch between all posts and following posts
+        function switchTab(tab) {
+            const allTab = document.querySelector('.tab-btn:nth-child(1)');
+            const followingTab = document.querySelector('.tab-btn:nth-child(2)');
+            const allPosts = document.getElementById('feed-posts');
+            const followingPosts = document.getElementById('following-posts');
+            
+            if (tab === 'all') {
+                allTab.classList.add('active');
+                followingTab.classList.remove('active');
+                allPosts.style.display = 'block';
+                followingPosts.style.display = 'none';
+            } else {
+                allTab.classList.remove('active');
+                followingTab.classList.add('active');
+                allPosts.style.display = 'none';
+                followingPosts.style.display = 'block';
+                window.postsModule.loadFollowingPosts();
+            }
+        }
+        
+        // Load suggested users
+        async function loadSuggestedUsers() {
+            const token = localStorage.getItem('token');
+            
+            try {
+                // In a real app, you would have an API endpoint for suggested users
+                // For now, we'll use a mock implementation
+                const response = await fetch(`${API_URL}/users/search/users?query=a`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.users) {
+                    const suggestedUsers = data.users.slice(0, 5);
+                    const container = document.getElementById('suggested-users-list');
+                    
+                    container.innerHTML = suggestedUsers.map(user => `
+                        <div class="suggested-user" onclick="window.location.href='/views/profile.html?id=${user._id}'">
+                            <img src="${user.profilePicture}" alt="${user.username}">
+                            <div>
+                                <strong>${user.username}</strong>
+                                <small>${user.fullName || ''}</small>
+                            </div>
+                            <button class="btn btn-sm" onclick="followSuggestedUser('${user._id}', event)">Follow</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load suggested users:', error);
+            }
+        }
+        
+        // Follow a suggested user
+        async function followSuggestedUser(userId, event) {
+            event.stopPropagation();
+            
+            const token = localStorage.getItem('token');
+            
+            try {
+                const response = await fetch(`${API_URL}/users/${userId}/follow`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    window.authModule.showSuccess('User followed successfully');
+                    event.target.textContent = 'Following';
+                    event.target.disabled = true;
+                }
+            } catch (error) {
+                window.authModule.showError('Failed to follow user');
+            }
+        }
+        
+        // Load user stats
+        async function loadUserStats() {
+            const user = window.authModule.getUser();
+            if (!user) return;
+            
+            const token = localStorage.getItem('token');
+            
+            try {
+                const response = await fetch(`${API_URL}/users/${user.id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.user) {
+                    document.getElementById('followers-count').textContent = data.user.followers?.length || 0;
+                    document.getElementById('following-count').textContent = data.user.following?.length || 0;
+                }
+            } catch (error) {
+                console.error('Failed to load user stats:', error);
+            }
+        }
+        
+        // Initialize feed page
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update UI
+            window.authModule.updateUserUI();
+            
+            // Load user stats
+            loadUserStats();
+            
+            // Load suggested users
+            loadSuggestedUsers();
+            
+            // Load feed
+            window.postsModule.loadFeed();
+            
+            // Set up search
+            const searchInput = document.getElementById('search-users');
+            if (searchInput) {
+                let searchTimeout;
+                
+                searchInput.addEventListener('input', function() {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(async () => {
+                        const query = this.value.trim();
+                        if (query.length >= 2) {
+                            const users = await window.profileModule.searchUsers(query);
+                            displaySearchResults(users);
+                        }
+                    }, 300);
+                });
+                
+                // Close search results when clicking outside
+                document.addEventListener('click', function(event) {
+                    const searchResults = document.getElementById('search-results');
+                    if (searchResults && !event.target.closest('.search-box')) {
+                        searchResults.style.display = 'none';
+                    }
+                });
+            }
+        });
+        
+        // Display search results
+        function displaySearchResults(users) {
+            const resultsContainer = document.getElementById('search-results');
+            if (!resultsContainer) return;
+            
+            if (users.length === 0) {
+                resultsContainer.innerHTML = '<p class="no-results">No users found</p>';
+            } else {
+                resultsContainer.innerHTML = users.map(user => `
+                    <div class="search-result" onclick="window.location.href='/views/profile.html?id=${user._id}'">
+                        <img src="${user.profilePicture}" alt="${user.username}" class="search-avatar">
+                        <div class="search-result-info">
+                            <strong>${user.fullName || user.username}</strong>
+                            <small>@${user.username}</small>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            resultsContainer.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
